@@ -10,11 +10,15 @@
 
 (defun critics (critic-ht)
   (let ((critic-lst nil))
-    (maphash (lambda (k v) (declare (ignore v)) (push k critic-lst)) critic-ht)
+    (if (hash-table-p critic-ht)
+        (maphash (lambda (k v) (declare (ignore v)) (push k critic-lst)) critic-ht)
+        (mapcar (lambda (k) (push (car k) critic-lst)) critic-ht))
     critic-lst))
 
 (defun get-critic (critic critic-lst)
-  (gethash critic critic-lst))
+  (if (hash-table-p critic-lst)
+      (gethash critic critic-lst)
+      (cdr (assoc-string critic critic-lst))))
 
 (defun get-score (movie critic critic-lst)
   (let ((movie-score (assoc-string movie
@@ -147,3 +151,22 @@
                              (cdr (assoc title totals)))))
                   titles)
           #'> :key #'cdr)))
+
+(defun movie-list (critic-lst)
+  (let ((titles nil))
+    (dolist (critic (critics critic-lst))
+      (mapcar (lambda (movie)
+                (pushnew (car movie) titles :test #'equal))
+              (get-critic critic critic-lst)))
+    titles))
+
+(defun movie-scores (critic-lst)
+  (mapcar (lambda (title)
+            (cons title
+                  (filter (lambda (critic)
+                            (numberp (cdr critic)))
+                          (mapcar (lambda (critic)
+                                    (cons critic
+                                          (get-score title critic critic-lst)))
+                                  (critics critic-lst)))))
+          (movie-list critic-lst)))
